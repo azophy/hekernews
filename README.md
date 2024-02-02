@@ -1,7 +1,7 @@
 HekerNews
 =========
 
-HackerNews clone for personal exercise
+HackerNews clone for personal exercise in high performance backend service
 
 based on:
 - go
