@@ -15,8 +15,19 @@
     <title>HekerNews</title>
 </head>
 
-<body>
+<body
+  x-data="{ posts: [], sort_by: 'time', after: '', session: {} }"
+  x-init="posts = await fetch_posts(); session = await fetch_session()"
+>
     <header>
+        <nav>
+            <a href="/"><img alt="Logo" src="https://via.placeholder.com/200x70?text=HekerNews" height="70"></a>
+            <ul>
+                <li x-show="!session.id"><a href="/login">Login</a></li>
+                <li x-show="session.id" x-text="'Hello, ' + session.name"></li>
+                <li x-show="session.id"><a href="/member/logout">Logout</a></li>
+            </ul>
+        </nav>
         <h1>HekerNews</h1>
         <p>Simple HackerNews clone using go, Echo framework, MVP.css, and AlpineJs</p>
     </header>
@@ -24,8 +35,6 @@
         <hr>
         <section
             id="section-1"
-            x-data="{ posts: [], sort_by: 'time', after: '' }"
-            x-init="posts = await fetch_posts()"
         >
             <header>
                 <h2>Home Feed</h2>
@@ -53,6 +62,10 @@
 <script>
 function fetch_posts(sort_by = 'time', after = '') {
     return fetch(`/api/posts?sort_by=${sort_by}&after=${after}`).then(r => r.json())
+}
+
+function fetch_session() {
+    return fetch('/member/whoami').then(r => r.json())
 }
 </script>
 </html>
