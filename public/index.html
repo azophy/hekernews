@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- MVP.css quickstart template: https://github.com/andybrewer/mvp/ -->
+
+<head>
+    <link rel="icon" href="https://via.placeholder.com/70x70">
+    <link rel="stylesheet" href="https://unpkg.com/mvp.css">
+    <script src="//unpkg.com/alpinejs" defer></script>
+
+    <meta charset="utf-8">
+    <meta name="description" content="My description">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>HekerNews</title>
+</head>
+
+<body>
+    <header>
+        <h1>HekerNews</h1>
+        <p>Simple HackerNews clone using go, Echo framework, MVP.css, and AlpineJs</p>
+    </header>
+    <main>
+        <hr>
+        <section
+            id="section-1"
+            x-data="{ posts: [], sort_by: 'time', after: '' }"
+            x-init="posts = await fetch_posts()"
+        >
+            <header>
+                <h2>Home Feed</h2>
+                <p>Sort by: <a @click="posts = await fetch_posts('time')">latest</a>
+                | <a @click="posts = await fetch_posts('popular')">most popular</a></p>
+            </header>
+            <template x-for="post in posts">
+              <aside>
+                  <h3 x-text="post.title">title</h3>
+                  <p x-text="post.content">Card content*</p>
+                  <p><a :href="'/api/posts/' + post.id">read more</a></p>
+              </aside>
+            </template>
+            <p><a :href="'/?after='+after">See next page ></a></p>
+        </section>
+    </main>
+    <footer>
+        <hr>
+        <p>
+            <small>Contact info</small>
+        </p>
+    </footer>
+</body>
+
+<script>
+function fetch_posts(sort_by = 'time', after = '') {
+    return fetch(`/api/posts?sort_by=${sort_by}&after=${after}`).then(r => r.json())
+}
+</script>
+</html>
