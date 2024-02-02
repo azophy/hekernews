@@ -86,9 +86,9 @@ func main() {
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(jwtCustomClaims)
 		},
-		ErrorHandler: func(c echo.Context) jwt.Claims {
-      return c.Redirect(http.StatusMovedPermanently, "/login")
-		},
+		//ErrorHandler: func(c echo.Context, err error) error {
+      //return c.Redirect(http.StatusMovedPermanently, "/login")
+		//},
     TokenLookup: "cookie:token",
 		SigningKey: JWT_SECRET,
 	}
