@@ -54,7 +54,11 @@ func migrateDb(db_conn *sql.DB) error {
 }
 
 func main() {
-	JWT_SECRET := []byte("secret")
+	JWT_SECRET := []byte(os.Getenv("JWT_SECRET"))
+	APP_PORT := os.Getenv("APP_PORT")
+  if (APP_PORT == "") {
+    APP_PORT = "3000"
+  }
 
 	dbConnection := os.Getenv("DB_CONNECTION")
 	if dbConnection == "" {
@@ -62,7 +66,7 @@ func main() {
 	}
 	dbURI := os.Getenv("DB_URI")
 	if dbURI == "" {
-		dbURI := "./testdb.sqlite3"
+		dbURI = "./testdb.sqlite3"
 	}
 	db_conn, err := sql.Open(dbConnection, dbURI)
 	if err != nil {
@@ -149,13 +153,6 @@ func main() {
 	r.File("/new_post", "public/new_post.html")
 
 	e.GET("/api/posts", func(c echo.Context) error {
-		//posts := []Post{
-		//{"1","Test aja 1", "content 1", time.Now(), time.Now() },
-		//{"2","Test aja 2", "content 2", time.Now(), time.Now() },
-		//{"3","Test aja 3", "content 3", time.Now(), time.Now() },
-		//{"4","Test aja 4", "content 4", time.Now(), time.Now() },
-		//{"5","Test aja 5", "content 5", time.Now(), time.Now() },
-		//}
 		rows, err := db_conn.Query("SELECT * FROM posts")
 		if err != nil {
 			fmt.Println(err.Error())
@@ -195,5 +192,5 @@ func main() {
 		return c.Redirect(http.StatusSeeOther, "/")
 	})
 
-	e.Logger.Fatal(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":" + APP_PORT))
 }
