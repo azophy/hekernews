@@ -39,7 +39,8 @@
             <header>
                 <h2>Home Feed</h2>
                 <p>Sort by: <a @click="posts = await fetch_posts('time')">latest</a>
-                | <a @click="posts = await fetch_posts('popular')">most popular</a></p>
+                | <a @click="posts = await fetch_posts('popular')">most popular</a>
+                . <a href="/member/new_post">Create new post</a></p>
             </header>
             <template x-for="post in posts">
               <aside>
@@ -61,7 +62,9 @@
 
 <script>
 function fetch_posts(sort_by = 'time', after = '') {
-    return fetch(`/api/posts?sort_by=${sort_by}&after=${after}`).then(r => r.json())
+    return fetch(`/api/posts?sort_by=${sort_by}&after=${after}`)
+      .then(r => r.json())
+      .then(r => r ?? {}) // handle if response is null
 }
 
 function fetch_session() {

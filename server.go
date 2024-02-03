@@ -110,7 +110,7 @@ func main() {
     cookie.Expires = time.Now().Add(24 * time.Hour)
     c.SetCookie(cookie)
 
-    return c.Redirect(http.StatusMovedPermanently, "/")
+    return c.Redirect(http.StatusSeeOther, "/")
   })
 
 	// Restricted group
@@ -122,7 +122,7 @@ func main() {
 			return new(jwtCustomClaims)
 		},
 		//ErrorHandler: func(c echo.Context, err error) error {
-      //return c.Redirect(http.StatusMovedPermanently, "/login")
+      //return c.Redirect(http.StatusSeeOther, "/login")
 		//},
     TokenLookup: "cookie:token",
 		SigningKey: JWT_SECRET,
@@ -140,12 +140,11 @@ func main() {
     cookie.MaxAge = -1 // https://stackoverflow.com/a/59736764
     c.SetCookie(cookie)
 
-    return c.Redirect(http.StatusMovedPermanently, "/")
+    return c.Redirect(http.StatusSeeOther, "/")
   })
+  r.File("/new_post", "public/new_post.html")
 
-	//e.GET("/", func(c echo.Context) error {
-		//return c.String(http.StatusOK, "Hello, World!")
-	//})
+
   e.GET("/api/posts", func(c echo.Context) error {
     //posts := []Post{
       //{"1","Test aja 1", "content 1", time.Now(), time.Now() },
@@ -154,8 +153,9 @@ func main() {
       //{"4","Test aja 4", "content 4", time.Now(), time.Now() },
       //{"5","Test aja 5", "content 5", time.Now(), time.Now() },
     //}
-    rows, err := r.db.Query("SELECT * FROM posts")
+    rows, err := db_conn.Query("SELECT * FROM posts")
     if err != nil {
+        fmt.Println(err.Error())
         return err
     }
     defer rows.Close()
@@ -163,13 +163,33 @@ func main() {
     var all []Post
     for rows.Next() {
         var post Post
-        if err := rows.Scan(&post.Id, &post.Title, &post.Content, &post.CreatedAt, &post.UpdatedAt); err != nil {
+        var createdAt,updatedAt string
+        if err := rows.Scan(&post.Id, &post.Title, &post.Content, &createdAt, &updatedAt); err != nil {
+            fmt.Println(err.Error())
             return err
         }
+
+        post.CreatedAt, _ = time.Parse(time.RFC822, createdAt)
+        post.UpdatedAt, _ = time.Parse(time.RFC822, updatedAt)
+
         all = append(all, post)
     }
 
-		return c.JSON(http.StatusOK, posts)
+		return c.JSON(http.StatusOK, all)
+	})
+
+  e.POST("/api/posts", func(c echo.Context) error {
+    title := c.FormValue("title")
+    content := c.FormValue("content")
+    timeNow := time.Now().Format(time.RFC3339)
+
+    _, err := db_conn.Exec("INSERT INTO posts(title, content, created_at, updated_at) values(?, ?, ?, ?)", title, content, timeNow, timeNow)
+    if err != nil {
+        fmt.Println(err.Error())
+        return err
+    }
+
+    return c.Redirect(http.StatusSeeOther, "/")
 	})
 
 	e.Logger.Fatal(e.Start(":1323"))
