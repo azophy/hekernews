@@ -3,6 +3,10 @@ package main
 import (
   "net/http"
   "time"
+  "database/sql"
+  "fmt"
+
+  _ "github.com/mattn/go-sqlite3"
 
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
@@ -32,9 +36,40 @@ type jwtCustomClaims struct {
 	jwt.RegisteredClaims
 }
 
+func connectDb() (*sql.DB, error) {
+  fileName := "./testdb.sqlite3"
+  return sql.Open("sqlite3", fileName)
+}
+
+func migrateDb(db_conn *sql.DB) error {
+    fmt.Println("attempting migration....")
+    query := `
+    CREATE TABLE IF NOT EXISTS posts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title VARCHAR(200),
+        content TEXT,
+        created_at VARCHAR(200),
+        updated_at VARCHAR(200)
+    );
+    `
+
+    _, err := db_conn.Exec(query)
+    return err
+}
 
 func main() {
   JWT_SECRET := []byte("secret")
+
+  db_conn, err := connectDb()
+  if err != nil {
+    panic(err)
+  }
+  defer db_conn.Close()
+
+  migrateDb(db_conn)
+  if err != nil {
+    panic(err)
+  }
 
 	e := echo.New()
 
@@ -112,14 +147,30 @@ func main() {
 		//return c.String(http.StatusOK, "Hello, World!")
 	//})
   e.GET("/api/posts", func(c echo.Context) error {
-    posts := []Post{
-      {"1","Test aja 1", "content 1", time.Now(), time.Now() },
-      {"2","Test aja 2", "content 2", time.Now(), time.Now() },
-      {"3","Test aja 3", "content 3", time.Now(), time.Now() },
-      {"4","Test aja 4", "content 4", time.Now(), time.Now() },
-      {"5","Test aja 5", "content 5", time.Now(), time.Now() },
+    //posts := []Post{
+      //{"1","Test aja 1", "content 1", time.Now(), time.Now() },
+      //{"2","Test aja 2", "content 2", time.Now(), time.Now() },
+      //{"3","Test aja 3", "content 3", time.Now(), time.Now() },
+      //{"4","Test aja 4", "content 4", time.Now(), time.Now() },
+      //{"5","Test aja 5", "content 5", time.Now(), time.Now() },
+    //}
+    rows, err := r.db.Query("SELECT * FROM posts")
+    if err != nil {
+        return err
     }
+    defer rows.Close()
+
+    var all []Post
+    for rows.Next() {
+        var post Post
+        if err := rows.Scan(&post.Id, &post.Title, &post.Content, &post.CreatedAt, &post.UpdatedAt); err != nil {
+            return err
+        }
+        all = append(all, post)
+    }
+
 		return c.JSON(http.StatusOK, posts)
 	})
+
 	e.Logger.Fatal(e.Start(":1323"))
 }
