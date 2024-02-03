@@ -169,8 +169,8 @@ func main() {
             return err
         }
 
-        post.CreatedAt, _ = time.Parse(time.RFC822, createdAt)
-        post.UpdatedAt, _ = time.Parse(time.RFC822, updatedAt)
+        post.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+        post.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 
         all = append(all, post)
     }
