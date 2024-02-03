@@ -56,9 +56,9 @@ func migrateDb(db_conn *sql.DB) error {
 func main() {
 	JWT_SECRET := []byte(os.Getenv("JWT_SECRET"))
 	APP_PORT := os.Getenv("APP_PORT")
-  if (APP_PORT == "") {
-    APP_PORT = "3000"
-  }
+	if APP_PORT == "" {
+		APP_PORT = "3000"
+	}
 
 	dbConnection := os.Getenv("DB_CONNECTION")
 	if dbConnection == "" {
@@ -115,6 +115,7 @@ func main() {
 		cookie := new(http.Cookie)
 		cookie.Name = "token"
 		cookie.Value = t
+		cookie.Path = "/"
 		cookie.Expires = time.Now().Add(24 * time.Hour)
 		c.SetCookie(cookie)
 
@@ -129,9 +130,9 @@ func main() {
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(jwtCustomClaims)
 		},
-		//ErrorHandler: func(c echo.Context, err error) error {
-		//return c.Redirect(http.StatusSeeOther, "/login")
-		//},
+		ErrorHandler: func(c echo.Context, err error) error {
+			return c.HTML(http.StatusForbidden, "You can't access this page. Click <a href='login'>here</a> to login")
+		},
 		TokenLookup: "cookie:token",
 		SigningKey:  JWT_SECRET,
 	}
@@ -146,9 +147,10 @@ func main() {
 		cookie.Name = "token"
 		cookie.Value = ""
 		cookie.MaxAge = -1 // https://stackoverflow.com/a/59736764
+		cookie.Path = "/"
 		c.SetCookie(cookie)
 
-		return c.Redirect(http.StatusSeeOther, "/")
+		return c.HTML(http.StatusOK, "you have been logged out. back to <a href='/'>home</a>")
 	})
 	r.File("/new_post", "public/new_post.html")
 
