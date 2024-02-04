@@ -8,3 +8,8 @@ based on:
 - Labstack's Echo framework
 - MVP.css
 - AlpineJs
+
+## Running load test
+```
+$ docker run --rm -i grafana/k6 run - <load_test/script.js
+```
