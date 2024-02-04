@@ -24,6 +24,7 @@
             <a href="/"><img alt="Logo" src="https://via.placeholder.com/200x70?text=HekerNews" height="70"></a>
             <ul>
                 <li x-show="!session.id"><a href="/login">Login</a></li>
+                <li x-show="!session.id"><a href="/register">Register</a></li>
                 <li x-show="session.id" x-text="'Hello, ' + session.name"></li>
                 <li x-show="session.id"><a href="/member/logout">Logout</a></li>
             </ul>

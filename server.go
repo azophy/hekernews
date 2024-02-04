@@ -12,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	//"github.com/labstack/echo/v4/middleware"
 )
 
@@ -24,10 +25,13 @@ type Post struct {
 }
 
 type User struct {
-	Id       string `json:"id" xml:"id" form:"id" query:"id"`
-	Name     string `json:"name" xml:"name" form:"name" query:"name"`
-	Username string `json:"username" xml:"username" form:"username" query:"username"`
-	Email    string `json:"email" xml:"email" form:"email" query:"email"`
+	Id           string `json:"id" xml:"id" form:"id" query:"id"`
+	Name         string `json:"name" xml:"name" form:"name" query:"name"`
+	Email        string `json:"email" xml:"email" form:"email" query:"email"`
+	Username     string `json:"username" xml:"username" form:"username" query:"username"`
+	PasswordHash string `query:"password_hash"`
+	CreatedAt time.Time `json:"created_at" xml:"created_at" form:"created_at" query:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" xml:"updated_at" form:"updated_at" query:"updated_at"`
 }
 
 // jwtCustomClaims are custom claims extending default ones.
@@ -44,6 +48,15 @@ func migrateDb(db_conn *sql.DB) error {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title VARCHAR(200),
         content TEXT,
+        created_at VARCHAR(200),
+        updated_at VARCHAR(200)
+    );
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(200) NOT NULL,
+        email VARCHAR(200) NOT NULL,
+        username VARCHAR(200) NOT NULL,
+        password_hash VARCHAR(200) NOT NULL,
         created_at VARCHAR(200),
         updated_at VARCHAR(200)
     );
@@ -90,14 +103,31 @@ func main() {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		// Throws unauthorized error
-		if username != "fulan" || password != "fulan" {
-			return echo.ErrUnauthorized
+		query := `SELECT * FROM users where username = ?`
+		rows, err := db_conn.Query(query, username)
+		if err != nil {
+			return c.String(http.StatusForbidden, "Incorrect username or password")
+		}
+    user := new(User)
+		for rows.Next() {
+			var createdAt, updatedAt string
+			if err = rows.Scan(&user.Id, &user.Name, &user.Email, &user.Username, &user.PasswordHash, &createdAt, &updatedAt); err != nil {
+			  fmt.Println(err.Error())
+				return echo.NewHTTPError(http.StatusInternalServerError, "Something bad happened on the server")
+			}
+			user.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+			user.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+      fmt.Printf("name: %s\n", user.Name)
+		}
+
+		if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Incorrect username or password")
 		}
 
 		// Set custom claims
+    user.PasswordHash = "" // remove password
 		claims := &jwtCustomClaims{
-			User{Id: "id-1", Name: "Bapak Fulan", Username: "Fulan", Email: "fulan@example.com"},
+      *user,
 			jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
 			},
@@ -120,6 +150,29 @@ func main() {
 		c.SetCookie(cookie)
 
 		return c.Redirect(http.StatusSeeOther, "/")
+	})
+
+	e.File("/register", "public/register.html")
+	e.POST("/register", func(c echo.Context) error {
+		name := c.FormValue("name")
+		email := c.FormValue("email")
+		username := c.FormValue("username")
+		password := c.FormValue("password")
+
+		timeNow := time.Now().Format(time.RFC3339)
+		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		_, err = db_conn.Exec("INSERT INTO users(name, email, username, password_hash, created_at, updated_at) values(?, ?, ?, ?, ?, ?)", name, email, username, passwordHash, timeNow, timeNow)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		return c.HTML(http.StatusOK, "Registration succeed. Login <a href='login'>here</a> with your credential")
 	})
 
 	// Restricted group
