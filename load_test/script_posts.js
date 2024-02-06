@@ -3,7 +3,7 @@ import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporte
 import http from 'k6/http';
 
 //const baseUrl = 'http://host.docker.internal:3000'
-const baseUrl = 'http://localhost:3000'
+const baseUrl = 'http://localhost:3003'
 
 function makeid(length) {
    var result           = '';
@@ -32,44 +32,31 @@ function randomizeWords(length) {
 
   var result = []
    for ( var i = 0; i < length; i++ ) {
-      result.push(words[Math.floor(Math.random() * charactersLength)]);
+      result.push(words[Math.floor(Math.random() * numWords)]);
    }
   return result.join(' ')
 }
 
 export function handleSummary(data) {
-  var filename = "./reports/" + dateTime() + "_summary.html"
+  var filename = "./reports/" + Date.now() + "_summary.html"
   return {
     [filename] : htmlReport(data),
   };
 }
 
-export function testPost(username) {
+export function testCreatePost() {
   let data =  {
-    name: 'test',
-    email: 'test@example.com',
-    username: username,
-    password: 'test',
+    title: randomizeWords(3),
+    content: randomizeWords(10),
   };
-  let res = http.post(`${baseUrl}/register`, data);
+  let res = http.post(`${baseUrl}/api/posts`, data);
   check(res, {
     'testRegister is status 200': (r) => r.status === 200,
   });
 }
 
-export function testLogin(username) {
-  let data = {
-    username: username,
-    password: 'test',
-  };
-  let res = http.post(`${baseUrl}/login`, data);
-  check(res, {
-    'testLogin is status 200': (r) => r.status === 200,
-  });
-}
-
-export function testLogout(params) {
-  let res = http.get(`${baseUrl}/member/logout`);
+export function testListPost() {
+  let res = http.get(`${baseUrl}/api/posts`);
   check(res, {
     'testLogout is status 200': (r) => r.status === 200,
   });
@@ -85,7 +72,7 @@ export const options = {
   // threshold for breakpoint test
   executor: 'ramping-arrival-rate', //Assure load increase if the system slows
   stages: [
-    { duration: '2h', target: 1000 }, // just slowly ramp-up to a HUGE load
+    { duration: '5m', target: 1000 }, // just slowly ramp-up to a HUGE load
   ],
   thresholds: {
     http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '10s' }],
@@ -94,8 +81,6 @@ export const options = {
 };
 
 export default function () {
-  var username = makeid(20)
-  testRegister(username);
-  testLogin(username);
-  testLogout();
+  testCreatePost();
+  testListPost();
 }
