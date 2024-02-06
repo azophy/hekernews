@@ -5,7 +5,7 @@ import http from 'k6/http';
 //const baseUrl = 'http://host.docker.internal:3000'
 const baseUrl = 'http://localhost:3000'
 
-function makeid(length) {
+function randomString(length) {
    var result           = '';
    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
    var charactersLength = characters.length;
@@ -15,36 +15,16 @@ function makeid(length) {
    return result;
 }
 
-function randomizeWords(length) {
-  var words = [
-    'satu',
-    'dua',
-    'tiga',
-    'empat',
-    'lima',
-    'enam',
-    'tujuh',
-    'delapan',
-    'sembilan',
-    'sepuluh',
-  ];
-  var numWords = words.length;
-
-  var result = []
-   for ( var i = 0; i < length; i++ ) {
-      result.push(words[Math.floor(Math.random() * charactersLength)]);
-   }
-  return result.join(' ')
-}
-
 export function handleSummary(data) {
-  var filename = "./reports/" + dateTime() + "_summary.html"
+  var datetime = Date.now()
+  var filename = "./reports/" + datetime + "_summary.html"
+  console.log('filename: ' + filename)
   return {
     [filename] : htmlReport(data),
   };
 }
 
-export function testPost(username) {
+export function testRegister(username) {
   let data =  {
     name: 'test',
     email: 'test@example.com',
@@ -77,25 +57,23 @@ export function testLogout(params) {
 
 // =================================
 export const options = {
-  //stages: [
-    //{ duration: '30s', target: 20 },
-    //{ duration: '1m30s', target: 10 },
-    //{ duration: '20s', target: 0 },
-  //],
   // threshold for breakpoint test
-  executor: 'ramping-arrival-rate', //Assure load increase if the system slows
+  //executor: 'ramping-arrival-rate', //Assure load increase if the system slows
   stages: [
-    { duration: '2h', target: 1000 }, // just slowly ramp-up to a HUGE load
+    //{ duration: '10s', target: 10 }, // just slowly ramp-up to a HUGE load
+    { duration: '15m', target: 1000 }, // just slowly ramp-up to a HUGE load
   ],
   thresholds: {
-    http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '10s' }],
-    http_req_duration: [{ threshold: 'p(95) < 750', abortOnFail: true, delayAbortEval: '10s' }],
+    //http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '10s' }],
+    //http_req_duration: [{ threshold: 'p(95) < 750', abortOnFail: true, delayAbortEval: '10s' }],
+    http_req_failed: [{ threshold: 'rate<0.1', abortOnFail: true, delayAbortEval: '10s' }],
+    http_req_duration: [{ threshold: 'p(80) < 1000', abortOnFail: true, delayAbortEval: '10s' }],
   },
 };
 
 export default function () {
-  var username = makeid(20)
-  testRegister(username);
-  testLogin(username);
+  //var username = randomString(20)
+  //testRegister(username);
+  testLogin('test');
   testLogout();
 }

@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
@@ -45,14 +45,14 @@ func migrateDb(db_conn *sql.DB) error {
 	fmt.Println("attempting migration....")
 	query := `
     CREATE TABLE IF NOT EXISTS posts(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL,
         title VARCHAR(200),
         content TEXT,
         created_at VARCHAR(200),
         updated_at VARCHAR(200)
     );
     CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL,
         name VARCHAR(200) NOT NULL,
         email VARCHAR(200) NOT NULL,
         username VARCHAR(200) NOT NULL,
@@ -66,28 +66,28 @@ func migrateDb(db_conn *sql.DB) error {
 	return err
 }
 
-func main() {
-	JWT_SECRET := []byte(os.Getenv("JWT_SECRET"))
-	APP_PORT := os.Getenv("APP_PORT")
-	if APP_PORT == "" {
-		APP_PORT = "3000"
-	}
+func getEnvOrDefault(envKey string, defaultVal string) string {
+  val := os.Getenv(envKey)
+  if val != "" {
+    return val
+  } else {
+    return defaultVal
+  }
+}
 
-	dbConnection := os.Getenv("DB_CONNECTION")
-	if dbConnection == "" {
-		dbConnection = "sqlite3"
-	}
-	dbURI := os.Getenv("DB_URI")
-	if dbURI == "" {
-		dbURI = "./testdb.sqlite3"
-	}
+func main() {
+	JWT_SECRET := []byte(getEnvOrDefault("JWT_SECRET", "secret"))
+	APP_PORT := getEnvOrDefault("APP_PORT", "3000")
+
+  dbConnection := "postgres"
+  dbURI := getEnvOrDefault("DB_URL", "postgresql://postgres:postgres@localhost:5000/postgres?sslmode=disable")
 	db_conn, err := sql.Open(dbConnection, dbURI)
 	if err != nil {
 		panic(err)
 	}
 	defer db_conn.Close()
 
-	migrateDb(db_conn)
+	err = migrateDb(db_conn)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +103,7 @@ func main() {
 		username := c.FormValue("username")
 		password := c.FormValue("password")
 
-		query := `SELECT * FROM users where username = ?`
+		query := `SELECT * FROM users where username = $1`
 		rows, err := db_conn.Query(query, username)
 		if err != nil {
 			return c.String(http.StatusForbidden, "Incorrect username or password")
@@ -117,7 +117,7 @@ func main() {
 			}
 			user.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 			user.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-      fmt.Printf("name: %s\n", user.Name)
+      fmt.Printf("username: %s\n", user.Username)
 		}
 
 		if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
@@ -166,7 +166,7 @@ func main() {
 			return err
 		}
 
-		_, err = db_conn.Exec("INSERT INTO users(name, email, username, password_hash, created_at, updated_at) values(?, ?, ?, ?, ?, ?)", name, email, username, passwordHash, timeNow, timeNow)
+		_, err = db_conn.Exec("INSERT INTO users(name, email, username, password_hash, created_at, updated_at) values($1, $2, $3, $4, $5, $6)", name, email, username, passwordHash, timeNow, timeNow)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -208,7 +208,7 @@ func main() {
 	r.File("/new_post", "public/new_post.html")
 
 	e.GET("/api/posts", func(c echo.Context) error {
-		rows, err := db_conn.Query("SELECT * FROM posts")
+		rows, err := db_conn.Query("SELECT * FROM posts ORDER BY updated_at DESC limit 10")
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -238,7 +238,7 @@ func main() {
 		content := c.FormValue("content")
 		timeNow := time.Now().Format(time.RFC3339)
 
-		_, err := db_conn.Exec("INSERT INTO posts(title, content, created_at, updated_at) values(?, ?, ?, ?)", title, content, timeNow, timeNow)
+		_, err := db_conn.Exec("INSERT INTO posts(title, content, created_at, updated_at) values($1, $2, $3, $4)", title, content, timeNow, timeNow)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
